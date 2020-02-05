@@ -64,13 +64,19 @@ def fasta_parser(fasta, regex):
     """
     fasta_dictio_temp = {}
     # open and read file
-    with open(fasta) as inFile:
-        for line in inFile:
-            if line.startswith(">"):
-                key = line.split()[0].split(">")[1]
-                fasta_dictio_temp[key] = []
-            else:
-                fasta_dictio_temp[key].append(line.strip())
+    try:
+        with open(fasta) as inFile:
+            for line in inFile:
+                if line.startswith(">"):
+                    key = line.split()[0].split(">")[1]
+                    fasta_dictio_temp[key] = []
+                else:
+                    fasta_dictio_temp[key].append(line.strip())
+                    
+    except FileNotFoundError:
+        print("Dit bestand wordt niet gevonden")
+        fasta = input("Geef een nieuw bestand: ")
+        fasta_parser(fasta, regex)
 
     # get only kinase sequences instead of all of them
     fasta_dictio = get_kinase_sequences(fasta_dictio_temp, regex)
@@ -78,7 +84,7 @@ def fasta_parser(fasta, regex):
 
 
 def get_kinase_sequences(fasta_dictio_temp, regex):
-    """
+    """Select de sequenties met deze kinaze regex
 
     :param fasta_dictio_temp: dict - temporarily dictionary with
     sequences
@@ -121,35 +127,40 @@ def gff3_parser(gff3, fasta_dic):
     gff3_entries = []
     entry = ""
     # open en lees bestand
-    with open(gff3) as inFile:
-        for line in inFile:
-            # als mRNA in de regel staat
-            if re.search("mRNA", line):
-                # als entry niet leeg is
-                if entry != "":
-                    entry.set_exonen(exons)
-                    if entry.get_accessiecode() in fasta_dic.keys():
-                        gff3_entries.append(entry)
+    try: 
+        with open(gff3) as inFile:
+            for line in inFile:
+                # als mRNA in de regel staat
+                if re.search("mRNA", line):
+                    # als entry niet leeg is
+                    if entry != "":
+                        entry.set_exonen(exons)
+                        if entry.get_accessiecode() in fasta_dic.keys():
+                            gff3_entries.append(entry)
+                            exons = 0
+                        # Maak een nieuwe entry aan
+                        entry = GFF3()
+                        entry.set_chromosoom(line.split()[0].split("Chr")[1])
+                        entry.set_lengtegen(line.split()[3], line.split()[4])
+                        entry.set_accessiecode(line.split()[8].split(";")[0] \
+                                           .split("=")[1])
+                    # als entry leeg is, maak een nieuwe aan
+                    else:
                         exons = 0
-                    # Maak een nieuwe entry aan
-                    entry = GFF3()
-                    entry.set_chromosoom(line.split()[0].split("Chr")[1])
-                    entry.set_lengtegen(line.split()[3], line.split()[4])
-                    entry.set_accessiecode(line.split()[8].split(";")[0] \
+                        entry = GFF3()
+                        # Haal chromosoom, start, stop en accessiecode uit
+                        # de regel en sla deze op in het object
+                        entry.set_chromosoom(line.split()[0].split("Chr")[1])
+                        entry.set_lengtegen(line.split()[3], line.split()[4])
+                        entry.set_accessiecode(line.split()[8].split(";")[0]\
                                            .split("=")[1])
-                # als entry leeg is, maak een nieuwe aan
-                else:
-                    exons = 0
-                    entry = GFF3()
-                    # Haal chromosoom, start, stop en accessiecode uit
-                    # de regel en sla deze op in het object
-                    entry.set_chromosoom(line.split()[0].split("Chr")[1])
-                    entry.set_lengtegen(line.split()[3], line.split()[4])
-                    entry.set_accessiecode(line.split()[8].split(";")[0]\
-                                           .split("=")[1])
-            # Tel het aantal exonen
-            elif re.search("exon", line):
-                exons += 1
+                # Tel het aantal exonen
+                elif re.search("exon", line):
+                    exons += 1
+        except FileNotFoundError:
+            print("Dit bestand wordt niet gevonden")
+            gff3 = input("Geef een nieuw bestand: ")
+            gff3_parser(gff3, fasta_dic)
 
     return gff3_entries
 
